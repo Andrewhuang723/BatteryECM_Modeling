@@ -1,8 +1,7 @@
 clc; clear;
 
 %% ── OCV Lookup Table (all temperatures) ─────────────────────────────────────
-root_dir = fileparts(fileparts(fileparts(mfilename('fullpath'))));
-run(fullfile(root_dir, 'OCV', 'ocv_config.m'));
+run('../OCV/ocv_config.m');
 
 ocv_interp = @(SOC_query, T) interp2( ...
     SOC_points ./ 100, OCV_temps, OCV_charge, ...
