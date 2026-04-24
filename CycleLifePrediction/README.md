@@ -11,7 +11,7 @@ Simulates capacity fade over cycling using a 2-RC ECM with power-law ageing. Sup
 | `CycleAgeingParams.mat` | Ageing coefficients: N, dOCV, dR0, dR1, dR2, dQ |
 | `CyclingAgeing.slx` | Simulink model — 2-RC ECM with per-cycle ageing update |
 | `run_single_simulation.m` | Single deterministic run; prints MAE and plots capacity vs experimental |
-| `run_monte_carlo.m` | 20-sample parallel Monte Carlo; saves results and 95% CI curves |
+| `run_mc_simulation.m` | 20-sample parallel Monte Carlo; saves results and 95% CI curves |
 
 ## Configuration (`config.m`)
 
@@ -31,7 +31,7 @@ All parameters are controlled here. Key settings to change before running:
 
 - **RC parameters** — read from `BatteryParameterization_spesession.mat` (produced by BOL parameterization SDO session)
 - **Ageing parameters** — read from `CycleAgeingParams.mat` as a 6-element vector `[N, dOCV, dR0, dR1, dR2, dQ]`
-- **OCV table** — interpolated at `T_sim` from `../../OCV/ocv_config.m`
+- **OCV table** — interpolated at `T_sim` from `../OCV/ocv_config.m`
 
 ## Usage
 
@@ -48,7 +48,7 @@ Runs `CyclingAgeing.slx` once with the nominal ageing parameters from `config.m`
 
 ```matlab
 cd CycleLifePrediction
-run_monte_carlo
+run_mc_simulation
 ```
 
 Samples each ageing parameter as `N(μ, σ)` clipped to `[lo, hi]` bounds defined in `config.m`, runs all samples in parallel via `parfor`, then computes 95% confidence intervals. Before running, update the temp directory path at the top of the script if needed:
