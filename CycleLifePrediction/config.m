@@ -7,7 +7,7 @@ cfg.model_name = 'CyclingAgeing';
 cfg.T_sim = 25;  
 %% ── Battery Nominal Parameters ───────────────────────────────────────────────
 cfg.Qnom      = 230;   % Nominal capacity (Ah)
-cfg.C_rate    = 0.33;     % C-rate
+cfg.C_rate    = 1;     % C-rate
 
 cfg.voltage_upper_limit = 3.65;
 cfg.voltage_lower_limit = 2.5;

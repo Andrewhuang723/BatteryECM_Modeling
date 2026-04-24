@@ -12,7 +12,7 @@ Simulates capacity fade over cycling using a 2-RC ECM with power-law ageing. Sup
 | `CyclingAgeing.slx` | Simulink model — 2-RC ECM with per-cycle ageing update |
 | `run_single_simulation.m` | Single deterministic run; prints MAE and plots capacity vs experimental |
 | `run_mc_simulation.m` | 20-sample parallel Monte Carlo; saves results and 95% CI curves |
-| `results_v2.ipynb` | Python notebook — loads CI CSVs, plots retention curves, computes EOL cycles across temperatures |
+| `results.ipynb` | Python notebook — loads CI CSVs, plots retention curves, computes EOL cycles across temperatures |
 
 ## Configuration (`config.m`)
 
@@ -21,7 +21,7 @@ All parameters are controlled here. Key settings to change before running:
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `cfg.T_sim` | `25` | Simulation temperature (°C) — interpolates RC params between 25 °C and 45 °C fits |
-| `cfg.C_rate` | `0.33` | C-rate for charge/discharge current |
+| `cfg.C_rate` | `1.0` | C-rate for charge/discharge current |
 | `cfg.soc_lower_limit` | `0.0` | Discharge cut-off SOC |
 | `cfg.soc_upper_limit` | `1.0` | Charge cut-off SOC |
 | `cfg.num_simulations` | `20` | Monte Carlo sample count |
