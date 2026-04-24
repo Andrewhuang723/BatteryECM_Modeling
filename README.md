@@ -1,6 +1,6 @@
 # Battery Model based on Equivalent Circuit Model (ECM)
 
-Physics-based RC equivalent circuit model (ECM) for predicting cycle and calendar ageing of a 230Ah lithium-ion cell (DV4). Implements a 2-RC-branch ECM with Monte Carlo uncertainty quantification.
+Physics-based RC equivalent circuit model (ECM) for predicting cycle and calendar ageing of lithium ion batteries. Implements a 2-RC-branch ECM with Monte Carlo uncertainty quantification.
 
 ## Repository Structure
 
