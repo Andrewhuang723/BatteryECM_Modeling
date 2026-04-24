@@ -25,8 +25,8 @@ simIn = simIn.setVariable('init_SOC',  cfg.init_SOC);
 simIn = simIn.setVariable('t_exp',               cfg.t_exp);
 simIn = simIn.setVariable('Battery_capacity',    cfg.Battery_capacity);
 simIn = simIn.setVariable('Qnom',                cfg.Qnom);
-simIn = simIn.setVariable('SOCs_29',             cfg.SOCs_29);
-simIn = simIn.setVariable('OCVs_29',             cfg.OCVs_29);
+simIn = simIn.setVariable('SOCs',             cfg.SOCs);
+simIn = simIn.setVariable('OCVs',             cfg.OCVs);
 
 % RC parameters
 simIn = simIn.setVariable('R0_charge',           cfg.R0_charge);
@@ -61,3 +61,11 @@ q_sim_discharge = [cycle_idx,  capacity_data(zc_charge) - capacity_data(zc_disch
 retention_sim      = q_sim_charge;
 retention_sim(:,1) = retention_sim(:,1) - retention_sim(1,1);
 retention_sim(:,2) = retention_sim(:,2) ./ retention_sim(1,2);
+
+%% ── Plot ─────────────────────────────────────────────────────────────────────
+figure;
+plot(retention_sim(:,1), retention_sim(:,2) * 100, '-', 'LineWidth', 2);
+xlabel('Cycle Number');
+ylabel('Capacity Retention (%)');
+title(sprintf('Cycle Life Prediction (T=%d°C)', cfg.T_sim));
+grid on;

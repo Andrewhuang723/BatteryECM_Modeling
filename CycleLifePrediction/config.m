@@ -41,21 +41,21 @@ cfg.OCVs = ocv_interp(cfg.SOCs, cfg.T_sim);
 % RC values
 RC_FILE = load('ECMParams.mat');
 RC_PARAM_VALUES = RC_FILE.SDOSessionData.Data.Workspace.LocalWorkspace.EstimatedParams_1.Parameters;
-cfg.R0_charge      = RC_PARAM_VALUES(1);
-cfg.R0_discharge   = RC_PARAM_VALUES(2);
-cfg.R1_charge      = RC_PARAM_VALUES(3);
-cfg.R1_discharge   = RC_PARAM_VALUES(4);
-cfg.R2_charge      = RC_PARAM_VALUES(5);
-cfg.R2_discharge   = RC_PARAM_VALUES(6);
-cfg.tau1_charge    = RC_PARAM_VALUES(7);
-cfg.tau1_discharge = RC_PARAM_VALUES(8);
-cfg.tau2_charge    = RC_PARAM_VALUES(9);
-cfg.tau2_discharge = RC_PARAM_VALUES(10);
+cfg.R0_charge      = RC_PARAM_VALUES(1).Value;
+cfg.R0_discharge   = RC_PARAM_VALUES(2).Value;
+cfg.R1_charge      = RC_PARAM_VALUES(3).Value;
+cfg.R1_discharge   = RC_PARAM_VALUES(4).Value;
+cfg.R2_charge      = RC_PARAM_VALUES(5).Value;
+cfg.R2_discharge   = RC_PARAM_VALUES(6).Value;
+cfg.tau1_charge    = RC_PARAM_VALUES(7).Value;
+cfg.tau1_discharge = RC_PARAM_VALUES(8).Value;
+cfg.tau2_charge    = RC_PARAM_VALUES(9).Value;
+cfg.tau2_discharge = RC_PARAM_VALUES(10).Value;
 
 %% ── Cycle Ageing Parameters ──────────────────────────────────────────────────
 CYCLE_FILE  = load('CycleAgeingParams.mat');
 CYCLE_PARAM_VALUES = CYCLE_FILE.CycleAgeingParams;
-cfg.N    = CYCLE_PARAM_VALUES(1) / (cfg.soc_upper_limit - cfg.soc_lower_limit);
+cfg.N    = CYCLE_PARAM_VALUES(1);
 cfg.dOCV = CYCLE_PARAM_VALUES(2);
 cfg.dR0  = CYCLE_PARAM_VALUES(3);
 cfg.dR1  = CYCLE_PARAM_VALUES(4);
