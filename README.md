@@ -1,113 +1,128 @@
-# 230Ah DV4 Battery Ageing Model
+# Battery Model based on Equivalent Circuit Model (ECM)
 
-Physics-based RC equivalent circuit model (ECM) for predicting cycle and calendar ageing of a 230Ah lithium-ion cell (DV4). Implements a 2-RC-branch ECM with Monte Carlo uncertainty quantification across multiple temperatures.
+Physics-based RC equivalent circuit model (ECM) for predicting cycle and calendar ageing of a 230Ah lithium-ion cell (DV4). Implements a 2-RC-branch ECM with Monte Carlo uncertainty quantification.
 
-## Directory Structure
+## Repository Structure
 
 ```
-20260127_230Ah/
-├── Cycling/                    # Experimental cycling data (CSV)
-│   ├── PRE-C RT CYCLE/         # 25°C, 1C-rate, 3500 cycles
-│   └── PRE-C HT CYCLE/         # 45°C, 1C-rate, 1200 cycles
-├── OCV/                        # OCV vs SOC lookup tables (XLSX, 25°C & 45°C)
-├── Storage/                    # Calendar ageing experimental data
-└── Modeling/
-    ├── BOL_parameterization/   # RC parameter fitting (SDO optimization)
-    ├── CycleLifePrediction/    # Cycle ageing simulation + Monte Carlo
-    └── CalendarAgeing/         # Storage degradation simulation
+Modeling/
+├── BOL_parameterization/   # Step 1 — Fit RC parameters against BOL data
+│   ├── parameters.m
+│   ├── BOL_data.csv
+│   ├── BatteryParameterization.slx
+│   ├── RC_values_plot.m
+│   └── 1C-CCCV-25/        # Fitted results: ECMParams.mat, RC_params.png
+│
+├── CycleLifePrediction/    # Step 2a — Predict capacity fade over cycling
+│   ├── config.m
+│   ├── CycleAgeingParams.mat
+│   ├── CyclingAgeing.slx
+│   ├── run_single_simulation.m
+│   ├── run_mc_simulation.m
+│   ├── 1C-CCCV-25-SOC0_100/ 
+│   └── results.ipynb
+│
+└── CalendarAgeing/         # Step 2b — Predict capacity fade during storage
+    ├── config.m
+    ├── CalendarAgeingParams.mat
+    ├── CalendarAgeing.slx
+    ├── run_single_simulation.m
+    ├── run_mc_simulation.m
+    ├── 100%SOC_25degC/     # Example results directory
+    └── results.ipynb
 ```
 
-## Quick Start
+## Workflow
 
-### 1. BOL RC Parameterization
-Fit R0, R1, R2, τ1, τ2 against beginning-of-life experimental data:
+The three modules run in dependency order:
+
+```
+BOL_parameterization
+    |── ECMParams.mat  ──────────────────────────────────┐
+    ↓                                                    ↓
+CycleLifePrediction                          
+    └── CycleAgeingParams.mat ──────────────────────────→ CalendarAgeing
+```
+
+### Step 1 — BOL RC Parameterization
+
+Fit R0, R1, R2, τ1, τ2 (charge & discharge) against beginning-of-life experimental data using Simulink Design Optimization (SDO). See [`BOL_parameterization/README.md`](BOL_parameterization/README.md).
+
 ```matlab
-cd Modeling/BOL_parameterization
-BOL_Preprocess_230Ah        % Extract BOL cycle, set optimizer bounds
-% Open BatteryParameterization.slx → run SDO optimization
-RC_values_plot              % Visualize fitted parameters vs SOC
-voltage_error_analysis      % Compute RMSE/MAE/MAPE
+cd BOL_parameterization
+run('parameters.m')             % Load experimental data and set optimizer bounds
+% Open BatteryParameterization.slx → SDO tab → Optimize
+% Save session as 1C-CCCV-25/ECMParams.mat
+RC_values_plot                  % Visualise fitted R0, R1, R2, τ1, τ2 vs SOC
 ```
-Fitted parameters are saved as `BatteryParameterization_spesession.mat` in `1C-CCCV/` (25°C) and `1C-CCCV-HT/` (45°C).
 
-### 2. Cycle Life Prediction
+#### **Example**
+
+Protocol
+```
+1C CC charge until 3.65V;
+1C CC discharge until 2.5V;
+@ 25 degree C
+```
+*1. Fitting curve*
+
+![1C-CC/DC](./BOL_parameterization/1C-CCCV-25/fitting_results.png)
+
+
+*2. RC-SOC values*
+
+![1C-CC/DC-ECM-RCS](./BOL_parameterization/1C-CCCV-25/RC_params.png)
+
+### Step 2a — Cycle Life Prediction
+
+Simulate capacity fade over hundreds of cycles using the fitted RC parameters. Supports a single deterministic run or a full 20-sample Monte Carlo pipeline. See [`CycleLifePrediction/README.md`](CycleLifePrediction/README.md).
+
 ```matlab
-cd Modeling/CycleLifePrediction
-
-% Single deterministic run:
-run_single_simulation       % Runs CyclingAgeing.slx, prints MAE vs experimental
-
-% Full Monte Carlo (20 samples, 95% CI):
-run_monte_carlo             % Parallel runs, saves results + CI plots
+cd CycleLifePrediction
+run_single_simulation           % Single run with nominal ageing parameters
+run_mc_simulation               % 20-sample parallel MC, saves results + CI curves
 ```
-Results saved to `1C-CCCV-35/` (or whichever `save_dir` is set in `config.m`).
 
-### 3. Calendar (Storage) Ageing
+#### **Example**
+
+*$ 1C/1C\ cycle\ @\ 25\degree C$*
+
+![Capacity retention prediction with 95% CI](./CycleLifePrediction/1C-CCCV-25-SOC0_100/prediction.png)
+
+### Step 2b — Calendar (Storage) Ageing
+
+Simulate capacity fade during storage at constant SOC and temperature. **Requires `CycleAgeingParams.mat` from `CycleLifePrediction/`** — `CalendarAgeing/config.m` loads cycle ageing coefficients directly from `../CycleLifePrediction/CycleAgeingParams.mat`. See [`CalendarAgeing/README.md`](CalendarAgeing/README.md).
+
 ```matlab
-cd Modeling/CalendarAgeing
-calendar_ageing_parameters  % Load experimental recovery data
-run_calendar_ageing         % Iterate storage periods
-% OR
-monte_carlo_parallel        % MC pipeline for storage conditions
-```
-Results in `100%SOC_25degC/`, `100%SOC_35degC/`, etc.
-
-## Configuration
-
-All cycle life parameters are controlled by a single file:
-
-**`Modeling/CycleLifePrediction/config.m`**
-
-Key settings to change:
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `cfg.T_sim` | 35 | Simulation temperature (°C) — interpolates between 25°C and 45°C fits |
-| `cfg.save_dir` | `1C-CCCV-35` | Output directory for results |
-| `cfg.N` | 1.50 | Power-law ageing exponent |
-| `cfg.dQ` | interpolated | Capacity fade rate (%/cycle) |
-| `cfg.dR0/dR1/dR2` | — | Resistance growth rates |
-| `cfg.num_simulations` | 20 | Monte Carlo sample count |
-
-## Model Overview
-
-```
-Experimental CSV → BOL Parameterization (BatteryParameterization.slx + SDO)
-                         ↓
-                  RC params (.mat)
-                         ↓
-                    config.m  ←── OCV tables, ageing rates, MC bounds
-                         ↓
-                 CyclingAgeing.slx
-               (2-RC ECM + ageing model)
-                         ↓
-            run_single_simulation  OR  run_monte_carlo (parfor)
-                         ↓
-               MAE metrics + capacity fade plots
-               Results: .mat + .csv in save_dir
+cd CalendarAgeing
+run_single_simulation           % Single run over num_steps storage periods
+run_mc_simulation               % 25-sample parallel MC over 14 ageing parameters
 ```
 
-**Ageing variables** updated per cycle: capacity (`dQ`), OCV offset (`dOCV`), series resistance (`dR0`), RC resistances (`dR1`, `dR2`). The power-law exponent `N` controls the shape of the fade curve.
+#### **Example**
 
-**Temperature interpolation**: all RC parameters and `dQ` are linearly interpolated between the 25°C and 45°C BOL fits using weights `p1` / `p2` derived from `cfg.T_sim`.
+*$ 100\%SOC\ @\ 25\degree C$*
 
-## Output Files
+![Calendar Ageing Prediction](./CalendarAgeing/100%25SOC_25degC/prediction.png)
 
-| File | Contents |
-|------|----------|
-| `monte_carlo_parallel_results.mat` | Per-simulation capacity & retention curves, sampled parameters |
-| `monte_carlo_parallel_summary.csv` | Per-simulation final capacity + parameter values |
-| `confidence_interval_results.mat` | Mean, 2.5th, 97.5th percentile curves vs experimental |
-| `confidence_interval_data.csv` | Same data in tabular form |
+
+## Parameter Dependencies
+
+| Parameter file | Produced by | Consumed by |
+|----------------|-------------|-------------|
+| `BOL_parameterization/1C-CCCV-25/ECMParams.mat` | `BatteryParameterization.slx` SDO run | `CycleLifePrediction/config.m`, `CalendarAgeing/config.m` |
+| `CycleLifePrediction/CycleAgeingParams.mat` | Manually fitted / optimised | `CycleLifePrediction/config.m`, `CalendarAgeing/config.m` |
+| `CalendarAgeing/CalendarAgeingParams.mat` | Manually fitted / optimised | `CalendarAgeing/config.m` |
+| `OCV/ocv_config.m` | Experimental OCV data | `CycleLifePrediction/config.m`, `CalendarAgeing/config.m` |
 
 ## Requirements
 
 - MATLAB R2021b or later
 - Simulink
-- Simulink Design Optimization (BOL parameterization only)
-- Parallel Computing Toolbox (`run_monte_carlo.m`)
+- Simulink Design Optimization (Step 1 only)
+- Parallel Computing Toolbox (`run_mc_simulation.m`)
 
-The parallel temp directory is hardcoded in `run_monte_carlo.m`:
+The parallel temp directory is set at the top of each `run_mc_simulation.m`:
 ```matlab
-setenv('TMP', 'D:\MATLAB\temp');
+setenv('TMP', 'D:\MATLAB\temp');   % update this path for your machine
 ```
-Change this path if running on a different machine.
