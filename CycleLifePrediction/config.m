@@ -39,7 +39,7 @@ cfg.SOCs = [linspace(0, 0.09, 10), linspace(0.1, 0.9, 9), linspace(0.91, 1, 10)]
 cfg.OCVs = ocv_interp(cfg.SOCs, cfg.T_sim);
 
 % RC values
-RC_FILE = load('BatteryParameterization_spesession.mat');
+RC_FILE = load('ECMParams.mat');
 RC_PARAM_VALUES = RC_FILE.SDOSessionData.Data.Workspace.LocalWorkspace.EstimatedParams_1.Parameters;
 cfg.R0_charge      = RC_PARAM_VALUES(1);
 cfg.R0_discharge   = RC_PARAM_VALUES(2);
