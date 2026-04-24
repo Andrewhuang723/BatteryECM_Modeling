@@ -1,110 +1,86 @@
 # Calendar Ageing
 
-Physics-based calendar (storage) ageing simulation for the 230 Ah DV4 lithium-ion cell. A Simulink model runs repeated charge/discharge cycles after an adjustable storage period, and a Monte Carlo wrapper propagates parameter uncertainty into capacity-retention predictions.
-
----
+Simulates capacity fade during storage using a physics-based calendar ageing model. Supports a single deterministic run or a full Monte Carlo pipeline with uncertainty bands across 14 ageing parameters.
 
 ## Files
 
-### `config.m`
+| File | Role |
+|------|------|
+| `config.m` | Central configuration — storage condition, RC params, ageing params, Monte Carlo bounds |
+| `CalendarAgeingParams.mat` | Calendar ageing coefficients: bR, cR, dR, aR, bC, cC, dC, aC |
+| `CalendarAgeing.slx` | Simulink model — 2-RC ECM with calendar ageing update at each storage period |
+| `run_single_simulation.m` | Single deterministic run; plots capacity retention vs. storage time |
+| `run_mc_simulation.m` | 25-sample parallel Monte Carlo; saves trajectories and summary results |
 
-Single source of truth for all simulation parameters.
+## Configuration (`config.m`)
 
-| Setting | Value | Description |
-|---------|-------|-------------|
-| `T_storage` | 25 °C | Storage temperature |
-| `SOC_storage` | 100 % | Storage state of charge |
-| `period` | 365 days | Length of one storage interval |
-| `num_steps` | 11 | Number of intervals (0 – 11 years) |
-| `num_simulations` | 25 | Monte Carlo sample count |
+All parameters are controlled here. Key settings to change before running:
 
-`CONDITION` and `save_dir` are derived automatically:
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `cfg.T_storage` | `25` | Storage temperature (°C) |
+| `cfg.SOC_storage` | `100` | Storage state of charge (%) |
+| `cfg.period` | `365` | Length of one storage interval (days) |
+| `cfg.num_steps` | `11` | Number of intervals (0 – 11 years) |
+| `cfg.num_simulations` | `25` | Monte Carlo sample count |
+
+`CONDITION` and `save_dir` are auto-generated from storage condition:
 ```matlab
 cfg.CONDITION = sprintf('%d%%SOC_%ddegC', cfg.SOC_storage, cfg.T_storage);
 cfg.save_dir  = fullfile(script_dir, cfg.CONDITION);
 ```
 
-**External parameter files loaded by `config.m`:**
+### Parameter sources loaded by `config.m`
+
+- **RC parameters** — read from `../BOL_parameterization/1C-CCCV-25/ECMParams.mat` (produced by BOL parameterization SDO session)
+- **Cycle ageing parameters** — read from `../CycleLifePrediction/CycleAgeingParams.mat` as a struct with fields `N`, `dOCV`, `dR0`, `dR1`, `dR2`, `dQ`
+- **Calendar ageing parameters** — read from `CalendarAgeingParams.mat` as a struct with fields `bR`, `cR`, `dR`, `aR`, `bC`, `cC`, `dC`, `aC`
+- **OCV table** — interpolated at `T_storage` from `../OCV/ocv_config.m`
+
+## Usage
+
+### Single deterministic run
+
+```matlab
+cd CalendarAgeing
+run_single_simulation
+```
+
+Runs `CalendarAgeing.slx` for each storage period (0 to `num_steps` years) with nominal ageing parameters from `config.m` and plots capacity retention (%) vs. storage time (days).
+
+### Monte Carlo (25 samples)
+
+```matlab
+cd CalendarAgeing
+run_mc_simulation
+```
+
+Samples all 14 ageing parameters as `N(μ, σ)` clipped to `[lo, hi]` bounds defined in `config.m`. All `num_simulations × num_steps` jobs are flattened into a single `parfor` loop for maximum parallelism. Before running, update the temp directory path at the top of the script if needed:
+
+```matlab
+setenv('TMP', 'D:\MATLAB\temp');   % change to a valid path on your machine
+```
+
+## Output
+
+Results are saved to `cfg.save_dir` (e.g., `100%SOC_25degC/`):
 
 | File | Contents |
 |------|----------|
-| `../CycleLifePrediction/CycleAgeingParams.mat` | Cycle ageing coefficients: `N`, `dOCV`, `dR0`, `dR1`, `dR2`, `dQ` |
-| `CalendarAgeingParams.mat` | Calendar ageing coefficients: `bR`, `cR`, `dR`, `aR`, `bC`, `cC`, `dC`, `aC` |
-| `../BOL_parameterization/1C-CCCV-25/ECMParams.mat` | Fitted RC parameters (R0, R1, R2, τ1, τ2 — charge & discharge) |
+| `monte_carlo_parallel_results.mat` | Per-simulation capacity and retention trajectories, sampled parameters, error flags |
+| `monte_carlo_parallel_summary.csv` | Per-simulation final capacity and all 14 parameter values |
 
-Monte Carlo bounds (`cfg.mc`) are defined as `struct('std', ..., 'lo', ..., 'hi', ...)` for each of the 14 sampled parameters.
+## Monte Carlo Uncertainty Bounds
 
----
+Defined in `config.m` under `cfg.mc`. Each parameter is perturbed independently:
 
-### `run_single_simulation.m`
-
-Deterministic single-trajectory simulation.
-
-**What it does:**
-1. Loads all parameters from `config.m`.
-2. Loops over `num_steps + 1` storage periods (0 to 11 years).
-3. For each period, builds a `Simulink.SimulationInput` with all 22 workspace variables injected via `setVariable()` — the `.slx` model file is never modified.
-4. Extracts discharged capacity from `q_sim` at the last charge zero-crossing.
-5. Plots capacity retention (%) vs. storage time (days).
-
-**Output plot:** capacity retention (%) on the y-axis, time in days on the x-axis, titled with `cfg.CONDITION`.
-
----
-
-### `run_mc_simulation.m`
-
-Parallel Monte Carlo simulation over 25 parameter sets × 11 storage steps = 275 Simulink jobs.
-
-**Sampled parameters (14 total):**
-
-| Group | Parameters |
-|-------|-----------|
-| Cycle ageing | `N`, `dOCV`, `dR0`, `dQ`, `dR1`, `dR2` |
-| Calendar resistance | `bR`, `cR`, `dR`, `aR` |
-| Calendar capacity | `bC`, `cC`, `dC`, `aC` |
-
-Samples are drawn as `nominal + std × randn`, clipped to `[lo, hi]`. Parameters with `std = 0` are fixed at their nominal value.
-
-**Execution:**
-```matlab
-% Jobs are flattened: job = (i_sim-1)*num_steps + t
-parfor job = 1:n_jobs
-    i_sim = ceil(job / num_steps);
-    t     = mod(job - 1, num_steps) + 1;
-    % ... build SimulationInput, run sim, extract capacity
-end
-```
-
-A parallel pool is started automatically via `gcp()`. The MATLAB temp directory is redirected to `D:\MATLAB\temp` to avoid worker conflicts.
-
-**Outputs saved to `100%SOC_25degC/`:**
-- `monte_carlo_parallel_results.mat` — full trajectories, per-parameter samples, error flags
-- `monte_carlo_parallel_summary.csv` — one row per simulation: all 14 parameters + `Final_Capacity` + `Error`
-
----
-
-## Results — `100%SOC_25degC/`
-
-Storage condition: **100% SOC, 25 °C**, 25 Monte Carlo simulations over 11 yearly intervals.
-
-### `monte_carlo_parallel_summary.csv`
-
-One row per simulation. Columns: `N`, `dOCV`, `dR0`, `dQ`, `dR1`, `dR2`, `bR`, `cR`, `dR`, `aR`, `bC`, `cC`, `dC`, `aC`, `Final_Capacity` (Ah after 11 years), `Error` (0 = success).
-
-### `monte_carlo_parallel_results.mat`
-
-MATLAB struct `results` containing:
-- Per-parameter sample arrays (`N`, `dOCV`, … `aC`)
-- `capacity` — cell array of `[step, Ah]` trajectories
-- `retention` — cell array of `[step, fraction]` trajectories
-- `final_capacity` — vector of end-of-life capacity (Ah)
-- `sim_time`, `errors`, `error_messages`
-
----
-
-## Plots
-
-`results.ipynb`
+| Parameter | Perturbation | Meaning |
+|-----------|-------------|---------|
+| `N`, `dOCV`, `dR0`, `dQ`, `dR1`, `dR2` | σ = 0 (fixed) | Cycle ageing params — held at nominal |
+| `aR` | σ = ±1% of nominal | Arrhenius pre-factor for resistance growth |
+| `bC` | σ = ±5% of nominal | Pre-exponential for capacity fade |
+| `cC` | σ = ±5% of nominal | SOC-dependent capacity fade coefficient |
+| `aC` | σ = ±1% of nominal | Arrhenius pre-factor for capacity fade |
 
 ### Monte Carlo Parameters
 
@@ -114,6 +90,8 @@ MATLAB struct `results` containing:
 
 ![Q vs Monte Carlo Parameters](100%25SOC_25degC/Q_vs_MC_params.png)
 
-### Prediction
+## Results
+
+### 100% SOC, 25 °C
 
 ![Calendar Ageing Prediction](100%25SOC_25degC/prediction.png)
