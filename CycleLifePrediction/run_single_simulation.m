@@ -1,13 +1,5 @@
 clc; clear;
 
-%% ── Run Single Simulation + Error Analysis ───────────────────────────────────
-%
-% Automated alternative to the manual workflow:
-%   cycle_ageing_parameters.m  →  CyclingAgeing.slx (UI)  →  error_analysis.m
-%
-% This script does the same thing end-to-end without manual steps.
-% To tune parameters, edit config.m.
-
 %% ── Load Configuration ───────────────────────────────────────────────────────
 cfg = config();
 
@@ -69,48 +61,3 @@ q_sim_discharge = [cycle_idx,  capacity_data(zc_charge) - capacity_data(zc_disch
 retention_sim      = q_sim_charge;
 retention_sim(:,1) = retention_sim(:,1) - retention_sim(1,1);
 retention_sim(:,2) = retention_sim(:,2) ./ retention_sim(1,2);
-
-%% ── Load Experimental Data ───────────────────────────────────────────────────
-cycle_data     = readtable(cfg.CYCLE_FILE, 'VariableNamingRule', 'preserve', 'Encoding', 'UTF-8');
-discharge_data = cycle_data(cycle_data{:,'工步種類'} == "CC放電" & cycle_data{:, "工步編號"} >= 10, :);
-discharge_data{:,'截止電量(Ah)'} = discharge_data{:,'截止電量(Ah)'};
-[~, max_Q_idx] = max(discharge_data{:,'截止電量(Ah)'});
-discharge_data = discharge_data(max_Q_idx:end, :);
-
-q_exp         = [(1:height(discharge_data))', discharge_data{:,'截止電量(Ah)'}];
-q_exp(:,1)    = q_exp(:,1) - q_exp(1,1);
-retention_exp = q_exp;
-retention_exp(:,2) = retention_exp(:,2) ./ retention_exp(1,2);
-
-%% ── Error Metrics ────────────────────────────────────────────────────────────
-q_sim_interp        = interp1(q_sim_discharge(:,1), q_sim_discharge(:,2), q_exp(:,1),        'linear', 'extrap');
-retention_sim_interp = interp1(retention_sim(:,1),  retention_sim(:,2),  retention_exp(:,1), 'linear', 'extrap');
-
-MAE_capacity  = mean(abs(q_exp(:,2)         - q_sim_interp));
-MAE_retention = mean(abs(retention_exp(:,2) - retention_sim_interp));
-
-fprintf('Error Analysis\n==============\n');
-fprintf('Capacity MAE : %.4f Ah\n', MAE_capacity);
-fprintf('Retention MAE: %.4f\n\n',  MAE_retention);
-
-%% ── Plot ─────────────────────────────────────────────────────────────────────
-sim_legend = sprintf('Simulation: N=%g  dOCV=%.5f  dQ=%.2f  dR0=%.2f  dR1=%.2f  dR2=%.2f', ...
-    cfg.N, cfg.dOCV, cfg.dQ, cfg.dR0, cfg.dR1, cfg.dR2);
-
-figure;
-
-subplot(1,2,1);
-plot(q_exp(:,1),           q_exp(:,2),           'b-',  'LineWidth', 2); hold on;
-plot(q_sim_discharge(:,1), q_sim_discharge(:,2),  'r--', 'LineWidth', 2);
-xlabel('Cycles'); ylabel('Capacity (Ah)');
-title(sprintf('Capacity vs Cycles\nMAE = %.4f Ah', MAE_capacity));
-legend('Experimental', sim_legend, 'Location', 'best');
-grid on;
-
-subplot(1,2,2);
-plot(retention_exp(:,1), retention_exp(:,2), 'b-',  'LineWidth', 2); hold on;
-plot(retention_sim(:,1), retention_sim(:,2), 'r--', 'LineWidth', 2);
-xlabel('Cycles'); ylabel('Capacity Retention');
-title(sprintf('Capacity Retention vs Cycles\nMAE = %.4f', MAE_retention));
-legend('Experimental', sim_legend, 'Location', 'best');
-ylim([0.7, 1]); grid on;
