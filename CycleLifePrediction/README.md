@@ -7,7 +7,6 @@ Simulates capacity fade over cycling using a 2-RC ECM with power-law ageing. Sup
 | File | Role |
 |------|------|
 | `config.m` | Central configuration — temperature, SOC window, C-rate, RC params, ageing params, Monte Carlo bounds |
-| `ECMParams.mat` | Fitted RC parameters (R0, R1, R2, τ1, τ2) from BOL parameterization |
 | `CycleAgeingParams.mat` | Ageing coefficients: N, dOCV, dR0, dR1, dR2, dQ |
 | `CyclingAgeing.slx` | Simulink model — 2-RC ECM with per-cycle ageing update |
 | `run_single_simulation.m` | Single deterministic run; prints MAE and plots capacity vs experimental |
@@ -30,7 +29,7 @@ All parameters are controlled here. Key settings to change before running:
 
 ### Parameter sources loaded by `config.m`
 
-- **RC parameters** — read from `ECMParams.mat` (produced by BOL parameterization SDO session)
+- **RC parameters** — read from `../BOLparameterization/ECMParams.mat` (produced by BOL parameterization SDO session)
 - **Ageing parameters** — read from `CycleAgeingParams.mat` as a 6-element vector `[N, dOCV, dR0, dR1, dR2, dQ]`
 - **OCV table** — interpolated at `T_sim` from `../OCV/ocv_config.m`
 
