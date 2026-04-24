@@ -16,7 +16,7 @@ Fits the 2-RC ECM parameters (R0, R1, R2, τ1, τ2) for charge and discharge aga
 Open `parameters.m` and set:
 
 ```matlab
-T_sim = 35;   % Simulation temperature (°C)
+T_sim = 25;   % Simulation temperature (°C)
 ```
 
 This controls which OCV curve is used (interpolated between available temperature data). All other settings (voltage limits, SOC grid, optimizer bounds) can be left at their defaults.
@@ -37,10 +37,21 @@ This loads the workspace variables required by `BatteryParameterization.slx`:
 
 Open the model in Simulink, then in the **SDO** tab click **Optimize**. The optimizer fits all 10 parameters (5 × charge + 5 × discharge) to minimise voltage error against the experimental signal.
 
-
 ## Optimizer Bounds
 
 | Parameter | Lower | Upper |
 |-----------|-------|-------|
 | R0, R1, R2 | 1×10⁻⁵ Ω | 10 Ω |
 | τ1, τ2 | 0.1 s | 1000 s |
+
+## **Results**
+
+### Example 1C charge - 1C discharge curve
+![1C-CC/DC](1C-CCCV-25/fitting_results.png)
+
+
+### Example Final Capacity v.s Monte Carlo Parameters
+![1C-CC/DC-ECM-RCS](1C-CCCV-25/RC_params.png)
+
+
+

@@ -82,11 +82,11 @@ Defined in `config.m` under `cfg.mc`. Each ageing parameter is perturbed indepen
 | `dR1`, `dR2` | σ = ±10% of nominal | RC resistance growth rates |
 
 ### Example Monte Carlo Parameters
-![Monte Carlo Parameters](1C-CCCV-25-SOC0_100-C0p33/MC_params.png)
+![Monte Carlo Parameters](1C-CCCV-25-SOC0_100/MC_params.png)
 
 
 ### Example Final Capacity v.s Monte Carlo Parameters
-![Monte Carlo Parameters](1C-CCCV-25-SOC0_100-C0p33/Q_vs_MC_params.png)
+![Monte Carlo Parameters](1C-CCCV-25-SOC0_100/Q_vs_MC_params.png)
 
 It is obvious that $dQ$ (capacity faded rate) is highly correlated to $Q_{end}$ (Final capacity)
 
@@ -96,4 +96,4 @@ It is obvious that $dQ$ (capacity faded rate) is highly correlated to $Q_{end}$ 
 
 ### Example prediction (25 °C, 0–100% SOC, 0.33C)
 
-![Capacity retention prediction with 95% CI](1C-CCCV-25-SOC0_100-C0p33/prediction.png)
+![Capacity retention prediction with 95% CI](1C-CCCV-25-SOC0_100/prediction.png)
